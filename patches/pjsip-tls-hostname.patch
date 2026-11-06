@@ -1,0 +1,78 @@
+diff --git a/pjsip/src/pjsip/sip_transport_tls.c b/pjsip/src/pjsip/sip_transport_tls.c
+index 95a4c16de..78bd29789 100644
+--- a/pjsip/src/pjsip/sip_transport_tls.c
++++ b/pjsip/src/pjsip/sip_transport_tls.c
+@@ -29,6 +29,7 @@
+ #include <pj/os.h>
+ #include <pj/pool.h>
+ #include <pj/string.h>
++#include "aurora_tls_identity.h"
+ 
+ #if defined(PJSIP_HAS_TLS_TRANSPORT) && PJSIP_HAS_TLS_TRANSPORT!=0
+ 
+@@ -2261,8 +2262,6 @@ static pj_bool_t on_connect_complete(pj_ssl_sock_t *ssock,
+         pj_str_t *remote_name;
+         pj_ssl_cert_info *serv_cert = ssl_info.remote_cert_info;
+         pj_bool_t matched = PJ_FALSE;
+-        pj_bool_t has_san = PJ_FALSE;
+-        unsigned i;
+ 
+         /* Remote name may be hostname or IP address */
+         if (tls->remote_name.slen)
+@@ -2270,50 +2269,12 @@ static pj_bool_t on_connect_complete(pj_ssl_sock_t *ssock,
+         else
+             remote_name = &tls->base.remote_name.host;
+ 
+-        /* Start matching remote name with SubjectAltName fields of 
+-         * server certificate.
+-         */
+-        for (i = 0; i < serv_cert->subj_alt_name.cnt; ++i) {
+-            pj_str_t *cert_name = &serv_cert->subj_alt_name.entry[i].name;
+-
+-            switch (serv_cert->subj_alt_name.entry[i].type) {
+-            case PJ_SSL_CERT_NAME_DNS:
+-            case PJ_SSL_CERT_NAME_IP:
+-                has_san = PJ_TRUE;
+-                matched = !pj_stricmp(remote_name, cert_name);
+-                break;
+-            case PJ_SSL_CERT_NAME_URI:
+-                if (pj_strnicmp2(cert_name, "sip:", 4) == 0 ||
+-                    pj_strnicmp2(cert_name, "sips:", 5) == 0)
+-                {
+-                    pj_str_t host_part;
+-                    char *p;
+-
+-                    p = pj_strchr(cert_name, ':') + 1;
+-                    pj_strset(&host_part, p, cert_name->slen - 
+-                                             (p - cert_name->ptr));
+-                    has_san = PJ_TRUE;
+-                    matched = !pj_stricmp(remote_name, &host_part);
+-                }
+-                break;
+-            default:
+-                break;
+-            }
+-
+-            if (matched)
+-                break;
+-        }
+-        
+-        /* Only when the certificate presents no identity in SubjectAltName,
+-         * try with Common Name of Subject field. RFC 5922 (section 7.2) and
+-         * RFC 6125 (section 6.4.4) forbid falling back to Common Name when
+-         * SubjectAltName identities are present but none of them matches.
+-         */
+-        if (!matched && !has_san && remote_name->slen &&
+-            serv_cert->subject.cn.slen)
+-        {
+-            matched = !pj_stricmp(remote_name, &serv_cert->subject.cn);
+-        }
++        /* Standard TLS hostname verification. Certificate chain verification
++         * is still mandatory and remains owned by PJSIP/OpenSSL. */
++        matched = aurora_tls_identity_matches(serv_cert->raw.ptr,
++                                              serv_cert->raw.slen,
++                                              remote_name->ptr,
++                                              remote_name->slen);
+ 
+         if (!matched) {
+             if (pj_strnicmp2(&serv_cert->subject.cn, "*.", 2) == 0) {

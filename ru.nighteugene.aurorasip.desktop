@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+X-Nemo-Application-Type=silica-qt5
+Icon=ru.nighteugene.aurorasip
+Exec=/usr/bin/ru.nighteugene.aurorasip
+Name=Aurora SIP
+Name[ru]=Аврора SIP
+[X-Application]
+Permissions=Internet;Microphone;Audio;Call;UserDirs;RemovableMedia
+OrganizationName=ru.nighteugene
+ApplicationName=aurorasip
+ExecDBus=/usr/bin/ru.nighteugene.aurorasip

@@ -1,0 +1,9 @@
+build/
+third_party/*
+!third_party/pjproject/
+*.user
+release/
+*.pem
+*.key
+.env
+.env.*
